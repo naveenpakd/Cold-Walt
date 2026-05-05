@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload, X, Loader2 } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import Image from "next/image";
 
 export default function EditProduct({ params }) {
@@ -83,27 +82,35 @@ export default function EditProduct({ params }) {
 
     setLoading(true);
     
+    const uploadToImgBB = async (file) => {
+      const formData = new FormData();
+      formData.append("image", file);
+      
+      const apiKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+      if (!apiKey) throw new Error("ImgBB API Key is missing");
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        return data.data.url;
+      } else {
+        throw new Error(data.error?.message || "Failed to upload image to ImgBB");
+      }
+    };
+
     try {
       const uploadedImageUrls = [...existingImages];
       
-      // Delete removed images from Firebase Storage
-      for (const url of deletedImages) {
-        if (url.includes('firebasestorage.googleapis.com')) {
-          try {
-            const imageRef = ref(storage, url);
-            await deleteObject(imageRef);
-          } catch (e) {
-            console.error("Failed to delete image: ", url, e);
-          }
-        }
-      }
+      // Note: ImgBB images are typically not deleted via the same simple API call without a delete hash.
+      // For now, we just skip deletion of old Firebase images to avoid errors.
 
-      // Upload new images to Firebase Storage
+      // Upload new images to ImgBB
       for (const file of newImages) {
-        const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-        const storageRef = ref(storage, `products/${filename}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const downloadURL = await getDownloadURL(snapshot.ref);
+        const downloadURL = await uploadToImgBB(file);
         uploadedImageUrls.push(downloadURL);
       }
 

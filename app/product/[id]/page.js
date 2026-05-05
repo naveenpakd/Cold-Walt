@@ -12,7 +12,7 @@ export default function ProductDetails({ params }) {
   const [activeImage, setActiveImage] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "1234567890";
+  const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || "917306198135";
 
   useEffect(() => {
     const fetchProduct = async () => {

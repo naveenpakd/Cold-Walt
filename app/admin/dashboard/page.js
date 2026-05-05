@@ -5,9 +5,8 @@ import { Plus, Edit2, Trash2, Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { collection, getDocs, deleteDoc, doc, orderBy, query } from "firebase/firestore";
-import { ref, deleteObject } from "firebase/storage";
 
 export default function AdminDashboard() {
   const [products, setProducts] = useState([]);
@@ -41,19 +40,8 @@ export default function AdminDashboard() {
       // 1. Delete from Firestore
       await deleteDoc(doc(db, "products", productId));
 
-      // 2. Delete images from Firebase Storage
-      if (imageUrls && imageUrls.length > 0) {
-        for (const url of imageUrls) {
-          if (url.includes('firebasestorage.googleapis.com')) {
-            try {
-              const imageRef = ref(storage, url);
-              await deleteObject(imageRef);
-            } catch (e) {
-              console.error("Failed to delete image: ", url, e);
-            }
-          }
-        }
-      }
+      // Note: ImgBB images are typically not deleted via the same simple API call without a delete hash.
+      // For now, we just skip deletion of old Firebase images to avoid errors.
 
       // Update UI
       setProducts(products.filter(p => p.id !== productId));

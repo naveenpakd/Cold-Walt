@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Upload, X, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import Image from "next/image";
 
 export default function NewProduct() {
@@ -24,7 +23,7 @@ export default function NewProduct() {
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-    
+
     // Add new files to the existing images state
     setImages((prev) => [...prev, ...files]);
   };
@@ -41,22 +40,33 @@ export default function NewProduct() {
     }
 
     setLoading(true);
-    
+
+    const uploadToImgBB = async (file) => {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const apiKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
+      if (!apiKey) throw new Error("ImgBB API Key is missing");
+
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        return data.data.url;
+      } else {
+        throw new Error(data.error?.message || "Failed to upload image to ImgBB");
+      }
+    };
+
     try {
       const uploadedImageUrls = [];
-      
-      // Upload images to Firebase Storage
+
+      // Upload images to ImgBB
       for (const file of images) {
-        // Create a unique filename
-        const filename = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '')}`;
-        // Create a reference to 'products/{filename}'
-        const storageRef = ref(storage, `products/${filename}`);
-        
-        // Upload the file
-        const snapshot = await uploadBytes(storageRef, file);
-        
-        // Get the download URL
-        const downloadURL = await getDownloadURL(snapshot.ref);
+        const downloadURL = await uploadToImgBB(file);
         uploadedImageUrls.push(downloadURL);
       }
 
@@ -69,10 +79,10 @@ export default function NewProduct() {
         images: uploadedImageUrls,
         createdAt: serverTimestamp()
       });
-      
+
       toast.success("Product added successfully!");
       router.push("/admin/dashboard");
-      
+
     } catch (error) {
       console.error("Error adding product: ", error);
       toast.error("Failed to add product. Please try again.");
@@ -96,7 +106,7 @@ export default function NewProduct() {
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 space-y-6">
           <h2 className="text-lg font-bold text-brand-dark mb-4 border-b border-gray-100 pb-2">Basic Details</h2>
-          
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
             <input
@@ -104,7 +114,7 @@ export default function NewProduct() {
               required
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-accent focus:ring-2 focus:ring-brand-accent focus:outline-none transition-all"
               value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
           </div>
 
@@ -117,7 +127,7 @@ export default function NewProduct() {
                 min="0"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-accent focus:ring-2 focus:ring-brand-accent focus:outline-none transition-all"
                 value={formData.price}
-                onChange={(e) => setFormData({...formData, price: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
               />
             </div>
             <div>
@@ -128,7 +138,7 @@ export default function NewProduct() {
                 min="0"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-accent focus:ring-2 focus:ring-brand-accent focus:outline-none transition-all"
                 value={formData.stock}
-                onChange={(e) => setFormData({...formData, stock: e.target.value})}
+                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
               />
             </div>
           </div>
@@ -140,21 +150,21 @@ export default function NewProduct() {
               rows={4}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-brand-accent focus:ring-2 focus:ring-brand-accent focus:outline-none transition-all"
               value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
           </div>
         </div>
 
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold text-brand-dark mb-4 border-b border-gray-100 pb-2">Product Images</h2>
-          
+
           <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 gap-4">
             {images.map((img, index) => (
               <div key={index} className="relative w-full aspect-square rounded-xl overflow-hidden border border-gray-200">
-                <Image 
-                  src={URL.createObjectURL(img)} 
-                  alt={`Preview ${index}`} 
-                  fill 
+                <Image
+                  src={URL.createObjectURL(img)}
+                  alt={`Preview ${index}`}
+                  fill
                   className="object-cover"
                 />
                 <button
@@ -174,12 +184,12 @@ export default function NewProduct() {
             </div>
             <p className="font-medium text-gray-900 mb-1">Click to upload images</p>
             <p className="text-sm text-gray-500 mb-4">SVG, PNG, JPG or GIF (max. 800x400px)</p>
-            <input 
-              type="file" 
-              multiple 
-              accept="image/*" 
-              className="hidden" 
-              id="file-upload" 
+            <input
+              type="file"
+              multiple
+              accept="image/*"
+              className="hidden"
+              id="file-upload"
               onChange={handleImageChange}
             />
             <label htmlFor="file-upload" className="bg-white border border-gray-200 text-gray-700 px-6 py-2 rounded-full text-sm font-medium hover:bg-gray-50 cursor-pointer transition-colors shadow-sm">
