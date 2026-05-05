@@ -36,9 +36,9 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-6">
-          <Link href="/admin" className="text-sm font-medium hover:text-brand-accent transition-colors">
-            Admin
-          </Link>
+          {/* <Link href="/admin" className="text-sm font-medium hover:text-brand-accent transition-colors">
+            Admindddddddddddd
+          </Link> */}
           <button className="relative p-2 hover:bg-[#3a362f] rounded-full transition-colors">
             <ShoppingBag className="h-6 w-6 text-brand-light" />
             <span className="absolute right-0 top-0 flex h-4 w-4 items-center justify-center rounded-full bg-brand-accent text-[10px] font-bold text-white">
